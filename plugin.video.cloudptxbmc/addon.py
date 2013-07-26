@@ -61,7 +61,7 @@ def login():
 
     # phase 1 - obtain authorization URL
     oauth = OAuth1Session(OAUTH_CONSUMER_KEY, client_secret=OAUTH_CONSUMER_SECRET, callback_uri='oob')
-    oauth.fetch_request_token(OAUTH_REQUEST_TOKEN_URL)
+    request_token = oauth.fetch_request_token(OAUTH_REQUEST_TOKEN_URL)
     authorization_url = oauth.authorization_url(OAUTH_AUTHORIZE_TOKEN_URL)
     plugin.log.info('Authorization URL: {0}'.format(authorization_url))
 
@@ -78,7 +78,11 @@ def login():
     plugin.log.info('Got verifier: {0}'.format(verifier))
 
     # phase 4 - obtain authenticated access token
-    oauth.verifier = verifier
+    oauth = OAuth1Session(OAUTH_CONSUMER_KEY,
+                          client_secret=OAUTH_CONSUMER_SECRET,
+                          resource_owner_key=request_token['oauth_token'],
+                          resource_owner_secret=request_token['oauth_token_secret'],
+                          verifier=verifier)
     access_token = oauth.fetch_access_token(OAUTH_ACCESS_TOKEN_URL)
     storage['oauth_token_key'] = access_token['oauth_token']
     storage['oauth_token_secret'] = access_token['oauth_token_secret']
