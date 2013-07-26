@@ -23,23 +23,41 @@ OAUTH_ACCESS_TOKEN_URL = 'https://cloudpt.pt/oauth/access_token'
 PUNY_URL = 'http://services.sapo.pt/PunyURL/GetCompressedURLByURL'
 
 API_METADATA_URL = 'https://api.cloudpt.pt/1/Metadata/cloudpt'
+API_SEARCH_URL = 'https://api.cloudpt.pt/1/Search/cloudpt'
+
+THUMB_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif']
+THUMB_AUDIO_MIMES = ['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4']
+THUMB_VIDEO_MIMES = ['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv']
 
 rsession = requests.Session()
 
 @plugin.route('/')
 def index():
+    plugin.log.info(plugin.request.args)
     if 'oauth_token_secret' in storage and 'oauth_token_key' in storage:
         has_login = True
     else:
         has_login = False
 
     items = []
+
     if has_login:
-        # fetch files from root dir
-        auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-        resp_list = rsession.get(API_METADATA_URL + '/', auth=auth)
-        if resp_list.status_code == 200:
-            plugin.log.info(resp_list.json())
+
+        content_type = plugin.request.args.get('content_type')
+        if not content_type:
+            url = plugin.url_for(endpoint='show_content_types')
+            return plugin.redirect(url)
+        if isinstance(content_type, (list, tuple)):
+            content_type = content_type[0]
+
+        if content_type == 'video':
+            plugin.redirect(plugin.url_for('browse_video'))
+        elif content_type == 'audio':
+            plugin.notify('Audio plugin not implemented yet.')
+        elif content_type == 'image':
+            plugin.notify('Image plugin not implemented yet.')
+        else:
+            plugin.notify('Unkown content_type: {0}'.format(content_type))
 
         item = {
             'label': 'Logout',
@@ -54,6 +72,50 @@ def index():
         items.append(item)
 
     return items
+
+
+@plugin.route('/browse_video')
+def browse_video():
+    # fetch files from root dir
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    resp_list = rsession.get(API_METADATA_URL + '/', auth=auth)
+
+    items = []
+    if resp_list.status_code == 200:
+        api_res = resp_list.json()
+
+        for entry in api_res['contents']:
+            items.append({
+                'label': entry['path'],
+                'path': 'TODOPATH',
+            })
+        plugin.log.info(resp_list.json())
+
+    return items
+
+@plugin.route('/content_types')
+def show_content_types():
+    items = (
+        { 'label': 'Video',
+          'path': plugin.url_for(
+              endpoint='index',
+              content_type='video'
+          )
+        },
+        { 'label': 'Audio',
+          'path': plugin.url_for(
+              endpoint='index',
+              content_type='audio'
+          )
+        },
+        { 'label': 'Image',
+          'path': plugin.url_for(
+              endpoint='index',
+              content_type='image'
+          )
+        },
+    )
+    return plugin.finish(items)
 
 
 @plugin.route('/login')
