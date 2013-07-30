@@ -30,6 +30,7 @@ CLOUDPT_API_CONTENT_URL = 'https://api-content.cloudpt.pt'
 
 API_METADATA_URL = CLOUDPT_API_URL + '/1/Metadata/cloudpt'
 API_SEARCH_URL = CLOUDPT_API_URL + '/1/Search/cloudpt/'
+API_MEDIA_URL = CLOUDPT_API_URL + '/1/Media/cloudpt'
 API_THUMB_URL = CLOUDPT_API_CONTENT_URL + '/1/Thumbnails/cloudpt'
 
 IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif'])
@@ -120,9 +121,14 @@ def browse_video():
         api_res = resp_search.json()
 
         for entry in api_res:
+
             item = {
                 'label': entry['path'],
-                'path': 'TODOPATH',
+                'path': plugin.url_for(
+                    endpoint='play_media',
+                    path=entry['path'].encode('utf-8'),
+                ),
+                'is_playable': True,
             }
 
             if entry['thumb_exists']:
@@ -134,25 +140,34 @@ def browse_video():
     return plugin.finish(items, view_mode='thumbnail')
 
 
+@plugin.route('/play_media<path>')
+def play_media(path):
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    resp_media = rsession.post(API_MEDIA_URL + path, auth=auth)
+    plugin.log.info(resp_media)
+    api_res = resp_media.json()
+    return plugin.set_resolved_url(api_res['url'])
+
+
 @plugin.route('/content_types')
 def show_content_types():
     items = (
         { 'label': 'Video',
           'path': plugin.url_for(
               endpoint='index',
-              content_type='video'
+              content_type='video',
           )
         },
         { 'label': 'Audio',
           'path': plugin.url_for(
               endpoint='index',
-              content_type='audio'
+              content_type='audio',
           )
         },
         { 'label': 'Image',
           'path': plugin.url_for(
               endpoint='index',
-              content_type='image'
+              content_type='image',
           )
         },
     )
