@@ -32,6 +32,7 @@ API_METADATA_URL = CLOUDPT_API_URL + '/1/Metadata/cloudpt'
 API_SEARCH_URL = CLOUDPT_API_URL + '/1/Search/cloudpt/'
 API_MEDIA_URL = CLOUDPT_API_URL + '/1/Media/cloudpt'
 API_THUMB_URL = CLOUDPT_API_CONTENT_URL + '/1/Thumbnails/cloudpt'
+API_FILES_URL = CLOUDPT_API_CONTENT_URL + '/1/Files/cloudpt'
 
 IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif'])
 AUDIO_MIMES = set(['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4'])
@@ -143,10 +144,22 @@ def browse_video():
 @plugin.route('/play_media<path>')
 def play_media(path):
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_media = rsession.post(API_MEDIA_URL + path, auth=auth)
-    plugin.log.info(resp_media)
-    api_res = resp_media.json()
-    return plugin.set_resolved_url(api_res['url'])
+    if resp_media.status_code == 200:
+        api_res = resp_media.json()
+        return plugin.set_resolved_url(api_res['url'])
+    elif resp_media.status_code == 403:
+        # could not create link. Let's try a direct API link
+        file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(path))
+        return plugin.set_resolved_url(file_url)
+    else:
+        plugin.log.error(resp_media)
+        plugin.notify(msg='Could not play file', title='Error', delay=5000)
 
 
 @plugin.route('/content_types')
