@@ -4,11 +4,14 @@ import os.path
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources/lib'))
 
 from xbmcswift2 import Plugin
-from xbmcswift2 import xbmc, xbmcgui
+from xbmcswift2 import xbmc, xbmcgui, xbmcaddon
 from requests_oauthlib import OAuth1Session, OAuth1
 import requests
 from datetime import datetime, timedelta
 from xml.dom.minidom import parseString
+import oauthlib
+import urllib
+
 
 plugin = Plugin()
 storage = plugin.get_storage('storage')
@@ -22,14 +25,21 @@ OAUTH_ACCESS_TOKEN_URL = 'https://cloudpt.pt/oauth/access_token'
 
 PUNY_URL = 'http://services.sapo.pt/PunyURL/GetCompressedURLByURL'
 
-API_METADATA_URL = 'https://api.cloudpt.pt/1/Metadata/cloudpt'
-API_SEARCH_URL = 'https://api.cloudpt.pt/1/Search/cloudpt'
+CLOUDPT_API_URL = 'https://api.cloudpt.pt'
+CLOUDPT_API_CONTENT_URL = 'https://api-content.cloudpt.pt'
 
-THUMB_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif']
-THUMB_AUDIO_MIMES = ['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4']
-THUMB_VIDEO_MIMES = ['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv']
+API_METADATA_URL = CLOUDPT_API_URL + '/1/Metadata/cloudpt'
+API_SEARCH_URL = CLOUDPT_API_URL + '/1/Search/cloudpt/'
+API_THUMB_URL = CLOUDPT_API_CONTENT_URL + '/1/Thumbnails/cloudpt'
+
+IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif'])
+AUDIO_MIMES = set(['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4'])
+VIDEO_MIMES = set(['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv'])
 
 rsession = requests.Session()
+
+settings = xbmcaddon.Addon(id='plugin.video.cloudptxbmc')
+temporary_path = xbmc.translatePath(settings.getAddonInfo('profile'))
 
 @plugin.route('/')
 def index():
@@ -74,8 +84,8 @@ def index():
     return items
 
 
-@plugin.route('/browse_video')
-def browse_video():
+@plugin.route('/browse_audio')
+def browse_audio():
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     resp_list = rsession.get(API_METADATA_URL + '/', auth=auth)
@@ -89,9 +99,40 @@ def browse_video():
                 'label': entry['path'],
                 'path': 'TODOPATH',
             })
-        plugin.log.info(resp_list.json())
 
     return items
+
+
+@plugin.route('/browse_video')
+def browse_video():
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
+    search_params = {'query': '*', 'mime_type': VIDEO_MIMES}
+    resp_search = rsession.get(API_SEARCH_URL, params=search_params, auth=auth)
+    plugin.log.info(resp_search.json())
+
+    items = []
+    if resp_search.status_code == 200:
+        api_res = resp_search.json()
+
+        for entry in api_res:
+            item = {
+                'label': entry['path'],
+                'path': 'TODOPATH',
+            }
+
+            if entry['thumb_exists']:
+                thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path']) + '?size=m&format=png')
+                item['thumbnail'] = thumb_url
+
+            items.append(item)
+
+    return plugin.finish(items, view_mode='thumbnail')
+
 
 @plugin.route('/content_types')
 def show_content_types():
