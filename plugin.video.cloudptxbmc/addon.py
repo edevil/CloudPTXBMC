@@ -65,7 +65,7 @@ def index():
         if content_type == 'video':
             plugin.redirect(plugin.url_for('browse_video'))
         elif content_type == 'audio':
-            plugin.notify('Audio plugin not implemented yet.')
+            plugin.redirect(plugin.url_for(endpoint='browse_audio', path='/'))
         elif content_type == 'image':
             plugin.notify('Image plugin not implemented yet.')
         else:
@@ -86,21 +86,43 @@ def index():
     return items
 
 
-@plugin.route('/browse_audio')
-def browse_audio():
+@plugin.route('/browse_audio<path>')
+def browse_audio(path):
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    resp_list = rsession.get(API_METADATA_URL + '/', auth=auth)
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
+    resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
     items = []
     if resp_list.status_code == 200:
         api_res = resp_list.json()
+        plugin.log.info(api_res)
 
         for entry in api_res['contents']:
-            items.append({
-                'label': entry['path'],
-                'path': 'TODOPATH',
-            })
+            if entry['is_dir']:
+                items.append({
+                    'label': entry['path'],
+                    'path': plugin.url_for(endpoint='browse_audio', path=entry['path'].encode('utf-8')),
+                })
+            elif entry['mime_type'] in AUDIO_MIMES:
+                item = {
+                    'label': entry['path'],
+                    'path': plugin.url_for(
+                        endpoint='play_media',
+                        path=entry['path'].encode('utf-8'),
+                    ),
+                    'is_playable': True,
+                }
+
+                if entry['thumb_exists']:
+                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
+                    item['thumbnail'] = thumb_url
+
+                items.append(item)
 
     return items
 
@@ -133,7 +155,7 @@ def browse_video():
             }
 
             if entry['thumb_exists']:
-                thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path']) + '?size=m&format=png')
+                thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
                 item['thumbnail'] = thumb_url
 
             items.append(item)
@@ -159,7 +181,9 @@ def play_media(path):
         return plugin.set_resolved_url(file_url)
     else:
         plugin.log.error(resp_media)
+        plugin.log.error(resp_media.content)
         plugin.notify(msg='Could not play file', title='Error', delay=5000)
+        return plugin.finish(succeeded=False)
 
 
 @plugin.route('/content_types')
