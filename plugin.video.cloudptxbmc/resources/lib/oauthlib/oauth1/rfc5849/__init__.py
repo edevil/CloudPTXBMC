@@ -27,6 +27,9 @@ from oauthlib.common import Request, urlencode, generate_nonce
 from oauthlib.common import generate_timestamp, to_unicode
 from . import parameters, signature
 
+from requests.utils import unquote_unreserved
+from urllib import quote
+
 SIGNATURE_HMAC = "HMAC-SHA1"
 SIGNATURE_RSA = "RSA-SHA1"
 SIGNATURE_PLAINTEXT = "PLAINTEXT"
@@ -110,6 +113,12 @@ class Client(object):
                 self.resource_owner_secret)
 
         uri, headers, body = self._render(request)
+
+        # escape more chars than what "requests" wants... At least []
+        sch, net, path, par, query, fra = urlparse.urlparse(uri)
+        unq_path = unquote_unreserved(path).encode('utf-8')
+        path = quote(unq_path, safe=b"!#$%&'()*+,/:;=?@~")
+        uri = urlparse.urlunparse((sch, net, path, par, query, fra))
 
         collected_params = signature.collect_parameters(
             uri_query=urlparse.urlparse(uri).query,
