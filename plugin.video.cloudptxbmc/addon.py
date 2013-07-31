@@ -67,7 +67,7 @@ def index():
         elif content_type == 'audio':
             plugin.redirect(plugin.url_for(endpoint='browse_audio', path='/'))
         elif content_type == 'image':
-            plugin.notify('Image plugin not implemented yet.')
+            plugin.redirect(plugin.url_for(endpoint='browse_image', path='/'))
         else:
             plugin.notify('Unkown content_type: {0}'.format(content_type))
 
@@ -84,6 +84,52 @@ def index():
         items.append(item)
 
     return items
+
+
+@plugin.route('/browse_image<path>')
+def browse_image(path):
+    # fetch files from root dir
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
+    resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
+
+    items = []
+    if resp_list.status_code == 200:
+        api_res = resp_list.json()
+        plugin.log.info(api_res)
+
+        for entry in api_res['contents']:
+            if entry['is_dir']:
+                items.append({
+                    'label': entry['path'],
+                    'path': plugin.url_for(endpoint='browse_image', path=entry['path'].encode('utf-8')),
+                })
+            elif entry['mime_type'] in IMAGE_MIMES:
+                item = {
+                    'label': entry['path'],
+                    #'path': plugin.url_for(
+                    #    endpoint='play_media',
+                    #    path=entry['path'].encode('utf-8'),
+                    #),
+                    'is_playable': True,
+                }
+
+                # the slideshow stuff does not seem to support receiving plugin:// URLs...
+                # this is a problem because these URLs will only work for 300s
+                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
+                item['path'] = file_url
+
+                if entry['thumb_exists']:
+                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
+                    item['thumbnail'] = thumb_url
+
+                items.append(item)
+
+    return plugin.finish(items, view_mode='thumbnail')
 
 
 @plugin.route('/browse_audio<path>')
