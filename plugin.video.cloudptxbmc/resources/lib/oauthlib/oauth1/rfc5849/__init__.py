@@ -117,7 +117,7 @@ class Client(object):
         # escape more chars than what "requests" wants... At least []
         sch, net, path, par, query, fra = urlparse.urlparse(uri)
         unq_path = unquote_unreserved(path).encode('utf-8')
-        path = quote(unq_path, safe=b"!#$%&'*+,/:;=?@~")
+        path = quote(unq_path, safe=b"#$%&*+,/:;=?@~")
         uri = urlparse.urlunparse((sch, net, path, par, query, fra))
 
         collected_params = signature.collect_parameters(

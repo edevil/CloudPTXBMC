@@ -97,11 +97,11 @@ def browse_image(path):
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
-    items = []
     if resp_list.status_code == 200:
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        items = []
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({
@@ -129,7 +129,12 @@ def browse_image(path):
 
                 items.append(item)
 
-    return plugin.finish(items, view_mode='thumbnail')
+        return plugin.finish(items)
+    else:
+        plugin.log.error(resp_list)
+        plugin.log.error(resp_list.content)
+        plugin.notify(msg='Could not browse dir', title='Error', delay=5000)
+        return plugin.finish(succeeded=False)
 
 
 @plugin.route('/browse_audio<path>')
@@ -143,11 +148,11 @@ def browse_audio(path):
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
-    items = []
     if resp_list.status_code == 200:
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        items = []
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({
@@ -170,7 +175,12 @@ def browse_audio(path):
 
                 items.append(item)
 
-    return items
+        return items
+    else:
+        plugin.log.error(resp_list)
+        plugin.log.error(resp_list.content)
+        plugin.notify(msg='Could not browse dir', title='Error', delay=5000)
+        return plugin.finish(succeeded=False)
 
 
 @plugin.route('/browse_video')
@@ -185,10 +195,10 @@ def browse_video():
     resp_search = rsession.get(API_SEARCH_URL, params=search_params, auth=auth)
     plugin.log.info(resp_search.json())
 
-    items = []
     if resp_search.status_code == 200:
         api_res = resp_search.json()
 
+        items = []
         for entry in api_res:
 
             item = {
@@ -206,7 +216,12 @@ def browse_video():
 
             items.append(item)
 
-    return plugin.finish(items, view_mode='thumbnail')
+        return plugin.finish(items, view_mode='thumbnail')
+    else:
+        plugin.log.error(resp_search)
+        plugin.log.error(resp_search.content)
+        plugin.notify(msg='Could not search for videos', title='Error', delay=5000)
+        return plugin.finish(succeeded=False)
 
 
 @plugin.route('/play_media<path>')
