@@ -33,6 +33,7 @@ API_SEARCH_URL = CLOUDPT_API_URL + '/1/Search/cloudpt/'
 API_MEDIA_URL = CLOUDPT_API_URL + '/1/Media/cloudpt'
 API_THUMB_URL = CLOUDPT_API_CONTENT_URL + '/1/Thumbnails/cloudpt'
 API_FILES_URL = CLOUDPT_API_CONTENT_URL + '/1/Files/cloudpt'
+API_USERINFO_URL = CLOUDPT_API_URL + '/1/Account/Info'
 
 IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif'])
 AUDIO_MIMES = set(['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4'])
@@ -82,6 +83,8 @@ def index():
             'path': plugin.url_for('login'),
         }
         items.append(item)
+        url = plugin.url_for('login')
+        plugin.redirect(url)
 
     return items
 
@@ -287,7 +290,10 @@ def login():
     resp_puny = rsession.get(PUNY_URL, params=puny_params)
     compressed_url = parseString(resp_puny.content).getElementsByTagName('ascii')[0].childNodes[0].nodeValue
     dialog = xbmcgui.Dialog()
-    dialog.ok('Open URL in browser', compressed_url)
+    dialog.ok('Authenticate', 'With your computer or mobile, please go to this URL', 
+                compressed_url, 
+                'to authorize XBMC access to your account')
+
 
     # phase 3 - obtain verifier
     verifier = plugin.keyboard(heading='Insert verifier')
@@ -302,6 +308,24 @@ def login():
     access_token = oauth.fetch_access_token(OAUTH_ACCESS_TOKEN_URL)
     storage['oauth_token_key'] = access_token['oauth_token']
     storage['oauth_token_secret'] = access_token['oauth_token_secret']
+
+    # We need some user info now
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
+    resp_userinfo = rsession.get(API_USERINFO_URL, auth=auth)
+    if resp_userinfo.status_code == 200:
+        api_res = resp_userinfo.json()
+        settings.setSetting("settings.user.name", api_res['display_name'])
+        settings.setSetting("settings.user.email", api_res['email'])
+    else:
+        plugin.log.error(resp_userinfo)
+        plugin.log.error(resp_userinfo.content)
+        plugin.notify(msg='Could not retrieve user info', title='Error', delay=5000)
+        
 
     url = plugin.url_for('index')
     plugin.redirect(url)

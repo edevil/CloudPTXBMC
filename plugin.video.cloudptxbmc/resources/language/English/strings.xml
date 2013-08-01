@@ -2,4 +2,13 @@
 <strings>
   <!-- Plugin name -->
   <string id="30000">CloudPT XBMC</string>
+  <string id="30001">Options</string>
+  <string id="30002">User</string>
+  <string id="30003">Logout user...</string>
+
+  <string id="30004">Photos per page</string>
+  <string id="30005">Photo size to display</string> 
+  <string id="30006">Email</string> 
+
+  <string id="30100">Debug Log</string>
 </strings>
