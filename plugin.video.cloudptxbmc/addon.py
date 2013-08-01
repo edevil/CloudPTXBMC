@@ -86,6 +86,22 @@ def index():
     return items
 
 
+@plugin.route('/show_image<path>')
+def show_image(path):
+    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+                                    client_secret=OAUTH_CONSUMER_SECRET,
+                                    resource_owner_key=storage['oauth_token_key'],
+                                    resource_owner_secret=storage['oauth_token_secret'],
+                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
+    file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(path))
+    item = {
+        'label': path,
+        'path': file_url,
+        'is_playable': True,
+    }
+    return plugin.set_resolved_url(item)
+
+
 @plugin.route('/browse_image<path>')
 def browse_image(path):
     # fetch files from root dir
@@ -111,17 +127,11 @@ def browse_image(path):
             elif entry['mime_type'] in IMAGE_MIMES:
                 item = {
                     'label': entry['path'],
-                    #'path': plugin.url_for(
-                    #    endpoint='play_media',
-                    #    path=entry['path'].encode('utf-8'),
-                    #),
-                    'is_playable': True,
+                    'path': plugin.url_for(
+                        endpoint='show_image',
+                        path=entry['path'].encode('utf-8'),
+                    ),
                 }
-
-                # the slideshow stuff does not seem to support receiving plugin:// URLs...
-                # this is a problem because these URLs will only work for 300s
-                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
-                item['path'] = file_url
 
                 if entry['thumb_exists']:
                     thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
