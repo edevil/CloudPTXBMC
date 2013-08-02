@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<strings>
+  <!-- Plugin name -->
+  <string id="30000">CloudPT XBMC</string>
+  <string id="30001">Opções</string>
+  <string id="30002">Utilizador</string>
+  <string id="30003">Logout...</string>
+
+  <string id="30004">Fotos por página</string>
+  <string id="30005">Dimensão da foto</string> 
+  <string id="30006">Email</string> 
+  <string id="30007">Autenticação</string> 
+  <string id="30008">Usando o computador ou telemóvel, aceda a este URL</string> 
+  <string id="30009">para autorizar o acesso do XBMC à sua conta</string> 
+  <string id="30010">Insira o código de verificação</string> 
+  <string id="30011">Impossível aceder ao diretório</string> 
+  <string id="30012">Erro</string> 
+  <string id="30013">Não foi possível pesquisar vídeos</string> 
+  <string id="30014">Não foi possível tocar esta música</string> 
+  <string id="30015">Não foi possível obter informação do utilizador</string> 
+  <string id="30016">Logout</string> 
+  <string id="30017">O utilizador %s fez logout.</string> 
+  <string id="30018"></string> 
+  <string id="30019"></string> 
+  <string id="30020"></string> 
+
+  <string id="30100">Debug Log</string>
+</strings>

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from xml.dom.minidom import parseString
 import oauthlib
 import urllib
+import CommonFunctions as common
 
 
 plugin = Plugin()
@@ -42,6 +43,8 @@ VIDEO_MIMES = set(['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvide
 rsession = requests.Session()
 
 settings = xbmcaddon.Addon(id='plugin.video.cloudptxbmc')
+language = settings.getLocalizedString
+dbg = settings.getSetting("settings.debug") == "true"
 temporary_path = xbmc.translatePath(settings.getAddonInfo('profile'))
 
 @plugin.route('/')
@@ -136,7 +139,7 @@ def browse_image(path):
     else:
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
-        plugin.notify(msg='Could not browse dir', title='Error', delay=5000)
+        plugin.notify(msg=language(30011), title=language(30012), delay=5000)
         return plugin.finish(succeeded=False)
 
 
@@ -182,7 +185,7 @@ def browse_audio(path):
     else:
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
-        plugin.notify(msg='Could not browse dir', title='Error', delay=5000)
+        plugin.notify(msg=language(30011), title=language(30012), delay=5000)
         return plugin.finish(succeeded=False)
 
 
@@ -223,7 +226,7 @@ def browse_video():
     else:
         plugin.log.error(resp_search)
         plugin.log.error(resp_search.content)
-        plugin.notify(msg='Could not search for videos', title='Error', delay=5000)
+        plugin.notify(msg=language(30013), title=language(30012), delay=5000)
         return plugin.finish(succeeded=False)
 
 
@@ -246,7 +249,7 @@ def play_media(path):
     else:
         plugin.log.error(resp_media)
         plugin.log.error(resp_media.content)
-        plugin.notify(msg='Could not play file', title='Error', delay=5000)
+        plugin.notify(msg=language(30014), title=language(30012), delay=5000)
         return plugin.finish(succeeded=False)
 
 
@@ -290,13 +293,11 @@ def login():
     resp_puny = rsession.get(PUNY_URL, params=puny_params)
     compressed_url = parseString(resp_puny.content).getElementsByTagName('ascii')[0].childNodes[0].nodeValue
     dialog = xbmcgui.Dialog()
-    dialog.ok('Authenticate', 'With your computer or mobile, please go to this URL', 
-                compressed_url, 
-                'to authorize XBMC access to your account')
+    dialog.ok(language(30007), language(30008), compressed_url, language(30009))
 
 
     # phase 3 - obtain verifier
-    verifier = plugin.keyboard(heading='Insert verifier')
+    verifier = common.getUserInputNumbers(language(30010))
     plugin.log.info('Got verifier: {0}'.format(verifier))
 
     # phase 4 - obtain authenticated access token
@@ -322,11 +323,13 @@ def login():
         settings.setSetting("settings.user.name", api_res['display_name'])
         settings.setSetting("settings.user.email", api_res['email'])
     else:
+        # TODO
+        # This may leave some inconsistency if we have a user but could not get its info
+        # Maybe we should clean up the tokens if we don't have user info?
         plugin.log.error(resp_userinfo)
         plugin.log.error(resp_userinfo.content)
-        plugin.notify(msg='Could not retrieve user info', title='Error', delay=5000)
+        plugin.notify(msg=language(30015), title=language(30012), delay=5000)
         
-
     url = plugin.url_for('index')
     plugin.redirect(url)
 

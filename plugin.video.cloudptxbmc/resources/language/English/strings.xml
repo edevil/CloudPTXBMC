@@ -9,6 +9,20 @@
   <string id="30004">Photos per page</string>
   <string id="30005">Photo size to display</string> 
   <string id="30006">Email</string> 
+  <string id="30007">Authenticate</string> 
+  <string id="30008">With your computer or mobile, please go to this URL</string> 
+  <string id="30009">to authorize XBMC access to your account</string> 
+  <string id="30010">Insert verifier code</string> 
+  <string id="30011">Could not browse directory</string> 
+  <string id="30012">Error</string> 
+  <string id="30013">Could not search for videos</string> 
+  <string id="30014">Could not play file</string> 
+  <string id="30015">Could not retrieve user info</string> 
+  <string id="30016">Logout</string> 
+  <string id="30017">User %s has logged off.</string> 
+  <string id="30018"></string> 
+  <string id="30019"></string> 
+  <string id="30020"></string> 
 
   <string id="30100">Debug Log</string>
 </strings>

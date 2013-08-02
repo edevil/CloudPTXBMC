@@ -9,6 +9,7 @@ plugin = Plugin(__addon_name__, __addon_id__, 'addon.py')
 
 storage = plugin.get_storage('storage')
 settings = xbmcaddon.Addon(id='plugin.video.cloudptxbmc')
+language = settings.getLocalizedString
 
 # Get current username
 currentUser = settings.getSetting( "settings.user.name" )
@@ -20,13 +21,12 @@ if 'oauth_token_key' in storage:
 if 'oauth_token_secret' in storage:
 	del storage['oauth_token_secret']
 
-# This should not be needed. Still...
+# This should not be needed. Still, if we don't, the tokens are not cleared
 storage.sync()
-
 
 settings.setSetting("settings.user.name", "")
 settings.setSetting("settings.user.email", "")
 
 # Show logged of info
-xbmcgui.Dialog().ok('Logout','User "%s" logged off.' % currentUser)
+xbmcgui.Dialog().ok(language(30016),language(30017) % currentUser)
 
