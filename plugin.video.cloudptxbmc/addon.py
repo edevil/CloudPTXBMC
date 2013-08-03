@@ -107,6 +107,8 @@ def browse_image(path):
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        photosize = settings.getSetting('settings.photos.size')
+
         items = []
         for entry in api_res['contents']:
             if entry['is_dir']:
@@ -126,7 +128,13 @@ def browse_image(path):
 
                 # the slideshow stuff does not seem to support receiving plugin:// URLs...
                 # this is a problem because these URLs will only work for 300s
-                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
+
+                # Use thumb or original from settings
+                if (photosize == '1'):
+                    file_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=xl')
+                else:
+                    file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
+                
                 item['path'] = file_url
 
                 if entry['thumb_exists']:
@@ -204,6 +212,11 @@ def browse_video(path):
         plugin.log.info(api_res)
 
         items = []
+        #items.append( {
+        #    'label' : 'SSL VIDEO',
+        #    'path'  : 'https://sandbox.eep.pt/xbmc/video.mov',
+        #    'is_playable': True
+        #    })
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({

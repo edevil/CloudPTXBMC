@@ -1,8 +1,7 @@
 TODO
-
-Show photos using the size from the settings file
-Fix problem with videos not playing
-Addon icon.jpg
-Addon fanart.jpg
 Change language settings to use .po format
-Full XBMC Skin
+Design: full XBMC Skin + icon.jpg and fanart.jpg
+
+ISSUES
+Fix problem with certain videos not playing through SSL (found those that require range requests)
+Find a solution to the 300s problem on photos (slideshow)
