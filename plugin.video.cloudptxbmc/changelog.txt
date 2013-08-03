@@ -1,0 +1,19 @@
+CloudPT XBMC Changelog
+
+0.1.3 August 3, 2013
+Changed video_browse behaviour to match pictures and audio
+Remove full path from labels
+
+0.1.2 August 2, 2013
+Further work on translations. Completed
+Changed way of entering pin
+
+
+0.1.1 August 1, 2013
+Added settings.xml
+Initial translations work
+Added icon.png
+
+0.1 July 24, 2013
+Initial version
+

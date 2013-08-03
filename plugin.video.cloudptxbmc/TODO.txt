@@ -1,0 +1,8 @@
+TODO
+
+Show photos using the size from the settings file
+Fix problem with videos not playing
+Addon icon.jpg
+Addon fanart.jpg
+Change language settings to use .po format
+Full XBMC Skin
