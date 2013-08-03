@@ -67,7 +67,7 @@ def index():
             content_type = content_type[0]
 
         if content_type == 'video':
-            plugin.redirect(plugin.url_for('browse_video'))
+            plugin.redirect(plugin.url_for(endpoint='browse_video', path='/'))
         elif content_type == 'audio':
             plugin.redirect(plugin.url_for(endpoint='browse_audio', path='/'))
         elif content_type == 'image':
@@ -111,12 +111,12 @@ def browse_image(path):
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({
-                    'label': entry['path'],
+                    'label': os.path.basename(entry['path']),
                     'path': plugin.url_for(endpoint='browse_image', path=entry['path'].encode('utf-8')),
                 })
             elif entry['mime_type'] in IMAGE_MIMES:
                 item = {
-                    'label': entry['path'],
+                    'label': os.path.basename(entry['path']),
                     #'path': plugin.url_for(
                     #    endpoint='play_media',
                     #    path=entry['path'].encode('utf-8'),
@@ -162,12 +162,12 @@ def browse_audio(path):
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({
-                    'label': entry['path'],
+                    'label': os.path.basename(entry['path']),
                     'path': plugin.url_for(endpoint='browse_audio', path=entry['path'].encode('utf-8')),
                 })
             elif entry['mime_type'] in AUDIO_MIMES:
                 item = {
-                    'label': entry['path'],
+                    'label': os.path.basename(entry['path']),
                     'path': plugin.url_for(
                         endpoint='play_media',
                         path=entry['path'].encode('utf-8'),
@@ -189,44 +189,48 @@ def browse_audio(path):
         return plugin.finish(succeeded=False)
 
 
-@plugin.route('/browse_video')
-def browse_video():
+@plugin.route('/browse_video<path>')
+def browse_video(path):
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
                                     client_secret=OAUTH_CONSUMER_SECRET,
                                     resource_owner_key=storage['oauth_token_key'],
                                     resource_owner_secret=storage['oauth_token_secret'],
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
-    search_params = {'query': '*', 'mime_type': VIDEO_MIMES}
-    resp_search = rsession.get(API_SEARCH_URL, params=search_params, auth=auth)
-    plugin.log.info(resp_search.json())
+    resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
-    if resp_search.status_code == 200:
-        api_res = resp_search.json()
+    if resp_list.status_code == 200:
+        api_res = resp_list.json()
+        plugin.log.info(api_res)
 
         items = []
-        for entry in api_res:
+        for entry in api_res['contents']:
+            if entry['is_dir']:
+                items.append({
+                    'label': os.path.basename(entry['path']),
+                    'path': plugin.url_for(endpoint='browse_video', path=entry['path'].encode('utf-8')),
+                })
+            elif entry['mime_type'] in VIDEO_MIMES:
+                item = {
+                    'label': os.path.basename(entry['path']),
+                    'path': plugin.url_for(
+                        endpoint='play_media',
+                        path=entry['path'].encode('utf-8'),
+                    ),
+                    'is_playable': True,
+                }
 
-            item = {
-                'label': entry['path'],
-                'path': plugin.url_for(
-                    endpoint='play_media',
-                    path=entry['path'].encode('utf-8'),
-                ),
-                'is_playable': True,
-            }
+                if entry['thumb_exists']:
+                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
+                    item['thumbnail'] = thumb_url
 
-            if entry['thumb_exists']:
-                thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                item['thumbnail'] = thumb_url
+                items.append(item)
 
-            items.append(item)
-
-        return plugin.finish(items, view_mode='thumbnail')
+        return items
     else:
-        plugin.log.error(resp_search)
-        plugin.log.error(resp_search.content)
-        plugin.notify(msg=language(30013), title=language(30012), delay=5000)
+        plugin.log.error(resp_list)
+        plugin.log.error(resp_list.content)
+        plugin.notify(msg=language(30011), title=language(30012), delay=5000)
         return plugin.finish(succeeded=False)
 
 

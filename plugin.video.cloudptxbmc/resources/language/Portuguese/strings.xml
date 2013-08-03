@@ -15,8 +15,7 @@
   <string id="30010">Insira o código de verificação</string> 
   <string id="30011">Impossível aceder ao diretório</string> 
   <string id="30012">Erro</string> 
-  <string id="30013">Não foi possível pesquisar vídeos</string> 
-  <string id="30014">Não foi possível tocar esta música</string> 
+  <string id="30014">Não foi possível tocar este ficheiro</string> 
   <string id="30015">Não foi possível obter informação do utilizador</string> 
   <string id="30016">Logout</string> 
   <string id="30017">O utilizador %s fez logout.</string> 
