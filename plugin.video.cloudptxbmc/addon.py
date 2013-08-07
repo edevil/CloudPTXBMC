@@ -246,21 +246,21 @@ def browse_video(path):
             'path' : 'https://sandbox.eep.pt/xbmc/video.mov',
             'is_playable' : True
             })
-        items.append({
-            'label': 'NOSSL Video from sandbox',
-            'path' : 'http://sandbox.eep.pt/xbmc/video.mov',
-            'is_playable' : True
-            })
-        items.append({
-            'label': 'SSL MP4 from sandbox',
-            'path' : 'https://sandbox.eep.pt/xbmc/video.mp4',
-            'is_playable' : True
-            })
-        items.append({
-            'label': 'NOSSL MP4 from sandbox',
-            'path' : 'http://sandbox.eep.pt/xbmc/video.mp4',
-            'is_playable' : True
-            })
+        #items.append({
+        #    'label': 'NOSSL Video from sandbox',
+        #    'path' : 'http://sandbox.eep.pt/xbmc/video.mov',
+        #    'is_playable' : True
+        #    })
+        #items.append({
+        #    'label': 'SSL MP4 from sandbox',
+        #    'path' : 'https://sandbox.eep.pt/xbmc/video.mp4',
+        #    'is_playable' : True
+        #    })
+        #items.append({
+        #    'label': 'NOSSL MP4 from sandbox',
+        #    'path' : 'http://sandbox.eep.pt/xbmc/video.mp4',
+        #    'is_playable' : True
+        #    })
 
         for entry in api_res['contents']:
             if entry['is_dir']:
