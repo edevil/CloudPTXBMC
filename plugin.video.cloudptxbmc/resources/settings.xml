@@ -10,7 +10,8 @@
         
         <setting type="sep"/>
 
-        <setting label="30004" id="settings.photos.photosperpage"     type="slider"  default="200" range="30,10,500" option="int"/>
+        <!-- We don't need this yet. Maybe later -->
+        <!-- <setting label="30004" id="settings.photos.photosperpage"     type="slider"  default="200" range="30,10,500" option="int"/>-->
         <setting label="30005" id="settings.photos.size" type="enum" values="Original|Thumb (1024x768)" default="0" />
 
         <setting type="sep"/>

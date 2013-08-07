@@ -113,6 +113,8 @@ def index():
             'path': plugin.url_for('login'),
         }
         items.append(item)
+        
+        # Force login if we don't have auth info
         url = plugin.url_for('login')
         plugin.redirect(url)
 
