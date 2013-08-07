@@ -13,6 +13,29 @@ import oauthlib
 import urllib
 import CommonFunctions as common
 
+# Show qrcode window definitions
+# Should be closed after anykey
+class QRCodePopupWindow(xbmcgui.WindowDialog):
+    def __init__(self, linha1, linha2, linha3, qrcodefile):
+        XBFONT_LEFT = 0x00000000
+        XBFONT_RIGHT = 0X00000001
+        XBFONT_CENTER_X = 0X00000002
+        XBFONT_CENTER_Y = 0X00000004
+        XBFONT_TRUNCATED = 0X00000008
+
+        # Relative resolutions to 1920x1080 (1080p)
+        self.setCoordinateResolution(0)
+
+        self.addControl(xbmcgui.ControlImage(x=610, y=190, width=700, height=700, filename=os.path.join(MEDIADIR, "background_qrcode.png")))
+        self.addControl(xbmcgui.ControlImage(x=710, y=240, width=500, height=500, filename=qrcodefile))
+        self.addControl(xbmcgui.ControlLabel(x=610, y=760, width=700, height=25, label=linha1, alignment=XBFONT_CENTER_X))
+        self.addControl(xbmcgui.ControlLabel(x=610, y=800, width=700, height=25, label=linha2, alignment=XBFONT_CENTER_X))
+        self.addControl(xbmcgui.ControlLabel(x=610, y=840, width=700, height=25, label=linha3, alignment=XBFONT_CENTER_X))
+
+    def onAction(self, action):
+        ACTION_PREVIOUS_MENU = 10
+        #if action == ACTION_PREVIOUS_MENU:
+        self.close()
 
 plugin = Plugin()
 storage = plugin.get_storage('storage')
@@ -40,9 +63,13 @@ IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'i
 AUDIO_MIMES = set(['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4'])
 VIDEO_MIMES = set(['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv'])
 
+ADDONID = 'plugin.video.cloudptxbmc'
+settings = xbmcaddon.Addon(id=ADDONID)
+
+MEDIADIR = os.path.join(xbmc.translatePath(settings.getAddonInfo('path')),'resources', 'media')
+
 rsession = requests.Session()
 
-settings = xbmcaddon.Addon(id='plugin.video.cloudptxbmc')
 language = settings.getLocalizedString
 dbg = settings.getSetting("settings.debug") == "true"
 temporary_path = xbmc.translatePath(settings.getAddonInfo('profile'))
@@ -94,6 +121,7 @@ def index():
 
 @plugin.route('/browse_image<path>')
 def browse_image(path):
+
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
@@ -106,8 +134,6 @@ def browse_image(path):
     if resp_list.status_code == 200:
         api_res = resp_list.json()
         plugin.log.info(api_res)
-
-        photosize = settings.getSetting('settings.photos.size')
 
         items = []
         for entry in api_res['contents']:
@@ -128,13 +154,7 @@ def browse_image(path):
 
                 # the slideshow stuff does not seem to support receiving plugin:// URLs...
                 # this is a problem because these URLs will only work for 300s
-
-                # Use thumb or original from settings
-                if (photosize == '1'):
-                    file_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=xl')
-                else:
-                    file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
-                
+                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
                 item['path'] = file_url
 
                 if entry['thumb_exists']:
@@ -212,11 +232,27 @@ def browse_video(path):
         plugin.log.info(api_res)
 
         items = []
-        #items.append( {
-        #    'label' : 'SSL VIDEO',
-        #    'path'  : 'https://sandbox.eep.pt/xbmc/video.mov',
-        #    'is_playable': True
-        #    })
+        items.append({
+            'label': 'SSL Video from sandbox',
+            'path' : 'https://sandbox.eep.pt/xbmc/video.mov',
+            'is_playable' : True
+            })
+        items.append({
+            'label': 'NOSSL Video from sandbox',
+            'path' : 'http://sandbox.eep.pt/xbmc/video.mov',
+            'is_playable' : True
+            })
+        items.append({
+            'label': 'SSL MP4 from sandbox',
+            'path' : 'https://sandbox.eep.pt/xbmc/video.mp4',
+            'is_playable' : True
+            })
+        items.append({
+            'label': 'NOSSL MP4 from sandbox',
+            'path' : 'http://sandbox.eep.pt/xbmc/video.mp4',
+            'is_playable' : True
+            })
+
         for entry in api_res['contents']:
             if entry['is_dir']:
                 items.append({
@@ -232,6 +268,11 @@ def browse_video(path):
                     ),
                     'is_playable': True,
                 }
+
+                # the slideshow stuff does not seem to support receiving plugin:// URLs...
+                # this is a problem because these URLs will only work for 300s
+                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
+                item['path'] = file_url
 
                 if entry['thumb_exists']:
                     thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
@@ -309,46 +350,65 @@ def login():
     puny_params = {'url': authorization_url, 'random': '1', 'expires': expires}
     resp_puny = rsession.get(PUNY_URL, params=puny_params)
     compressed_url = parseString(resp_puny.content).getElementsByTagName('ascii')[0].childNodes[0].nodeValue
-    dialog = xbmcgui.Dialog()
-    dialog.ok(language(30007), language(30008), compressed_url, language(30009))
 
+    #dialog = xbmcgui.Dialog()
+    #dialog.ok(language(30007), language(30008), compressed_url, language(30009))
+
+    # Show qrcode along with URL
+    import tempfile
+    qrcodefile = tempfile.gettempdir() + '/' + 'cloudptQRCode.jpg'
+
+    import pyqrcode
+    qr_image = pyqrcode.MakeQRImage(compressed_url, rounding = 5, fg = "black", bg = "White", br = False)
+    qr_image.save(qrcodefile)
+
+    qrwindow = QRCodePopupWindow(language(30008), compressed_url, language(30009), qrcodefile)
+    qrwindow.doModal()
+    del qrwindow
 
     # phase 3 - obtain verifier
     verifier = common.getUserInputNumbers(language(30010))
     plugin.log.info('Got verifier: {0}'.format(verifier))
 
-    # phase 4 - obtain authenticated access token
-    oauth = OAuth1Session(OAUTH_CONSUMER_KEY,
+    if len(verifier) == 0:
+        plugin.notify(msg=language(30015), title=language(30012), delay=5000)
+    else:
+        try:
+            # phase 4 - obtain authenticated access token
+            oauth = OAuth1Session(OAUTH_CONSUMER_KEY,
                           client_secret=OAUTH_CONSUMER_SECRET,
                           resource_owner_key=request_token['oauth_token'],
                           resource_owner_secret=request_token['oauth_token_secret'],
                           verifier=verifier)
-    access_token = oauth.fetch_access_token(OAUTH_ACCESS_TOKEN_URL)
-    storage['oauth_token_key'] = access_token['oauth_token']
-    storage['oauth_token_secret'] = access_token['oauth_token_secret']
+            access_token = oauth.fetch_access_token(OAUTH_ACCESS_TOKEN_URL)
+            storage['oauth_token_key'] = access_token['oauth_token']
+            storage['oauth_token_secret'] = access_token['oauth_token_secret']
 
-    # We need some user info now
-    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
+            # We need some user info now
+            auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+            signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
                                     client_secret=OAUTH_CONSUMER_SECRET,
                                     resource_owner_key=storage['oauth_token_key'],
                                     resource_owner_secret=storage['oauth_token_secret'],
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
-    resp_userinfo = rsession.get(API_USERINFO_URL, auth=auth)
-    if resp_userinfo.status_code == 200:
-        api_res = resp_userinfo.json()
-        settings.setSetting("settings.user.name", api_res['display_name'])
-        settings.setSetting("settings.user.email", api_res['email'])
-    else:
-        # TODO
-        # This may leave some inconsistency if we have a user but could not get its info
-        # Maybe we should clean up the tokens if we don't have user info?
-        plugin.log.error(resp_userinfo)
-        plugin.log.error(resp_userinfo.content)
-        plugin.notify(msg=language(30015), title=language(30012), delay=5000)
+            resp_userinfo = rsession.get(API_USERINFO_URL, auth=auth)
+            if resp_userinfo.status_code == 200:
+                api_res = resp_userinfo.json()
+                settings.setSetting("settings.user.name", api_res['display_name'])
+                settings.setSetting("settings.user.email", api_res['email'])
+            else:
+                # TODO
+                # This may leave some inconsistency if we have a user but could not get its info
+                # Maybe we should clean up the tokens if we don't have user info?
+                plugin.log.error(resp_userinfo)
+                plugin.log.error(resp_userinfo.content)
+                plugin.notify(msg=language(30015), title=language(30012), delay=5000)
         
-    url = plugin.url_for('index')
-    plugin.redirect(url)
+            url = plugin.url_for('index')
+            plugin.redirect(url)
+        except:
+            plugin.notify(msg=language(30015), title=language(30012), delay=5000)
+
 
 
 @plugin.route('/logout')

@@ -10,8 +10,8 @@
   <string id="30005">Photo size to display</string> 
   <string id="30006">Email</string> 
   <string id="30007">Authenticate</string> 
-  <string id="30008">With your computer or mobile, please go to this URL</string> 
-  <string id="30009">to authorize XBMC access to your account</string> 
+  <string id="30008">Please visit this URL</string> 
+  <string id="30009">to authorize XBMC</string> 
   <string id="30010">Insert verifier code</string> 
   <string id="30011">Could not browse directory</string> 
   <string id="30012">Error</string> 

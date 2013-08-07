@@ -1,6 +1,7 @@
 TODO
 Change language settings to use .po format
 Design: full XBMC Skin + icon.jpg and fanart.jpg
+Show qrcode for easy auth
 
 ISSUES
 Fix problem with certain videos not playing through SSL (found those that require range requests)
