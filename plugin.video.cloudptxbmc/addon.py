@@ -41,7 +41,7 @@ def process_missing_thumbs(missing_thumbs):
             with open(local_thumb, 'w') as tfile:
                 tfile.write(resp_thumb.content)
         else:
-            plugin.log.error('Could not fetch thumbnail: {0} {1}'.format(entry_path, resp_thumb))
+            plugin.log.error('Could not fetch thumbnail: {0} {1}'.format(entry_path.encode('utf-8'), resp_thumb))
 
 
 def check_thumb(entry, item, missing_thumbs):
@@ -51,11 +51,13 @@ def check_thumb(entry, item, missing_thumbs):
 
     thumb_hash = get_crc32(local_thumb_path)
     local_thumb_cache = os.path.join(xbmc.translatePath('special://thumbnails/'), thumb_hash[0], thumb_hash + '.jpg')
-    if not os.path.exists(local_thumb_cache):
-        plugin.log.info('Will need to fetch the thumbnail of {0} into {1} - {2} not found'.format(entry['path'], local_thumb_path, local_thumb_cache))
-        missing_thumbs.append((local_thumb_path, entry['path']))
+    if os.path.exists(local_thumb_cache):
+        plugin.log.info('Local thumb of {0} already exists: {1}'.format(entry['path'].encode('utf-8'), local_thumb_cache))
+    elif os.path.exists(local_thumb_path):
+        plugin.log.info('Local thumb of {0} already fetched, but not in cache: {1} - {2}'.format(entry['path'].encode('utf-8'), local_thumb_path, local_thumb_cache))
     else:
-        plugin.log.info('Local thumb of {0} already exists: {1}'.format(entry['path'], local_thumb_cache))
+        plugin.log.info('Will need to fetch the thumbnail of {0} into {1} - {2} not found'.format(entry['path'].encode('utf-8'), local_thumb_path, local_thumb_cache))
+        missing_thumbs.append((local_thumb_path, entry['path']))
 
 
 # Show qrcode window definitions
@@ -243,6 +245,7 @@ def browse_audio(path):
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        missing_thumbs = []
         items = []
         for entry in api_res['contents']:
             if entry['is_dir']:
@@ -261,10 +264,12 @@ def browse_audio(path):
                 }
 
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
+
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
 
         return items
     else:
@@ -288,6 +293,7 @@ def browse_video(path):
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        missing_thumbs = []
         items = []
         items.append({
             'label': 'SSL Video from sandbox',
@@ -332,10 +338,12 @@ def browse_video(path):
                 item['path'] = file_url
 
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
+
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
 
         return items
     else:
