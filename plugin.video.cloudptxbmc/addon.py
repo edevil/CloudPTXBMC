@@ -13,6 +13,51 @@ import oauthlib
 import urllib
 import CommonFunctions as common
 
+
+def get_crc32( string ):
+    """Helper function to calculate thumbnail hash"""
+    string = string.lower()
+    bytes = bytearray(string.encode())
+    crc = 0xffffffff;
+    for b in bytes:
+        crc = crc ^ (b << 24)
+        for i in range(8):
+            if (crc & 0x80000000 ):
+                crc = (crc << 1) ^ 0x04C11DB7
+            else:
+                crc = crc << 1;
+        crc = crc & 0xFFFFFFFF
+
+    return '%08x' % crc
+
+
+def process_missing_thumbs(missing_thumbs):
+    """Fetch missing thumbnails to local files"""
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    plugin.log.info('Will need to fetch {0} thumbnails'.format(len(missing_thumbs)))
+    for local_thumb, entry_path in missing_thumbs:
+        resp_thumb = rsession.get(API_THUMB_URL + urllib.quote(entry_path.encode('utf-8')) + '?size=m&format=jpeg', auth=auth)
+        if resp_thumb.status_code == 200:
+            with open(local_thumb, 'w') as tfile:
+                tfile.write(resp_thumb.content)
+        else:
+            plugin.log.error('Could not fetch thumbnail: {0} {1}'.format(entry_path, resp_thumb))
+
+
+def check_thumb(entry, item, missing_thumbs):
+
+    local_thumb_path = os.path.join(xbmc.translatePath('special://temp/'), entry['rev'] + '.jpeg')
+    item['thumbnail'] = local_thumb_path
+
+    thumb_hash = get_crc32(local_thumb_path)
+    local_thumb_cache = os.path.join(xbmc.translatePath('special://thumbnails/'), thumb_hash[0], thumb_hash + '.jpg')
+    if not os.path.exists(local_thumb_cache):
+        plugin.log.info('Will need to fetch the thumbnail of {0} into {1} - {2} not found'.format(entry['path'], local_thumb_path, local_thumb_cache))
+        missing_thumbs.append((local_thumb_path, entry['path']))
+    else:
+        plugin.log.info('Local thumb of {0} already exists: {1}'.format(entry['path'], local_thumb_cache))
+
+
 # Show qrcode window definitions
 # Should be closed after anykey
 class QRCodePopupWindow(xbmcgui.WindowDialog):
@@ -36,6 +81,7 @@ class QRCodePopupWindow(xbmcgui.WindowDialog):
         ACTION_PREVIOUS_MENU = 10
         #if action == ACTION_PREVIOUS_MENU:
         self.close()
+
 
 plugin = Plugin()
 storage = plugin.get_storage('storage')
@@ -73,6 +119,7 @@ rsession = requests.Session()
 language = settings.getLocalizedString
 dbg = settings.getSetting("settings.debug") == "true"
 temporary_path = xbmc.translatePath(settings.getAddonInfo('profile'))
+
 
 @plugin.route('/')
 def index():
@@ -113,7 +160,7 @@ def index():
             'path': plugin.url_for('login'),
         }
         items.append(item)
-        
+
         # Force login if we don't have auth info
         url = plugin.url_for('login')
         plugin.redirect(url)
@@ -139,6 +186,7 @@ def browse_image(path):
 
         photosize = settings.getSetting('settings.photos.size')
 
+        missing_thumbs = []
         items = []
         for entry in api_res['contents']:
             if entry['is_dir']:
@@ -149,10 +197,6 @@ def browse_image(path):
             elif entry['mime_type'] in IMAGE_MIMES:
                 item = {
                     'label': os.path.basename(entry['path']),
-                    #'path': plugin.url_for(
-                    #    endpoint='play_media',
-                    #    path=entry['path'].encode('utf-8'),
-                    #),
                     'is_playable': True,
                 }
 
@@ -165,14 +209,16 @@ def browse_image(path):
                 else:
                     file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
 
-                # file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
                 item['path'] = file_url
+                item['properties'] = {'mimetype': entry['mime_type']}
 
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
+
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
 
         return plugin.finish(items)
     else:
@@ -414,7 +460,7 @@ def login():
                 plugin.log.error(resp_userinfo)
                 plugin.log.error(resp_userinfo.content)
                 plugin.notify(msg=language(30015), title=language(30012), delay=5000)
-        
+
             url = plugin.url_for('index')
             plugin.redirect(url)
         except:
