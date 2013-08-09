@@ -234,11 +234,6 @@ def browse_image(path):
 def browse_audio(path):
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
-                                    client_secret=OAUTH_CONSUMER_SECRET,
-                                    resource_owner_key=storage['oauth_token_key'],
-                                    resource_owner_secret=storage['oauth_token_secret'],
-                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
     if resp_list.status_code == 200:
@@ -259,6 +254,7 @@ def browse_audio(path):
                     'path': plugin.url_for(
                         endpoint='play_media',
                         path=entry['path'].encode('utf-8'),
+                        mime_type=entry['mime_type'],
                     ),
                     'is_playable': True,
                 }
@@ -282,11 +278,6 @@ def browse_audio(path):
 @plugin.route('/browse_video<path>')
 def browse_video(path):
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
-                                    client_secret=OAUTH_CONSUMER_SECRET,
-                                    resource_owner_key=storage['oauth_token_key'],
-                                    resource_owner_secret=storage['oauth_token_secret'],
-                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
     if resp_list.status_code == 200:
@@ -328,14 +319,10 @@ def browse_video(path):
                     'path': plugin.url_for(
                         endpoint='play_media',
                         path=entry['path'].encode('utf-8'),
+                        mime_type=entry['mime_type'],
                     ),
                     'is_playable': True,
                 }
-
-                # the slideshow stuff does not seem to support receiving plugin:// URLs...
-                # this is a problem because these URLs will only work for 300s
-                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
-                item['path'] = file_url
 
                 if entry['thumb_exists']:
                     check_thumb(entry, item, missing_thumbs)
@@ -362,13 +349,21 @@ def play_media(path):
                                     resource_owner_secret=storage['oauth_token_secret'],
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_media = rsession.post(API_MEDIA_URL + path, auth=auth)
+    item = {}
+    mime_type = plugin.request.args.get('mime_type')
+    if mime_type:
+        plugin.log.info('Got mime type')
+        item['properties'] = {'mimetype': mime_type[0]}
+
     if resp_media.status_code == 200:
         api_res = resp_media.json()
-        return plugin.set_resolved_url(api_res['url'])
+        item['path'] = api_res['url']
+        return plugin.set_resolved_url(item=item)
     elif resp_media.status_code == 403:
         # could not create link. Let's try a direct API link
         file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(path))
-        return plugin.set_resolved_url(file_url)
+        item['path'] = file_url
+        return plugin.set_resolved_url(item=item)
     else:
         plugin.log.error(resp_media)
         plugin.log.error(resp_media.content)
