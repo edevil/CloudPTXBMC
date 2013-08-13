@@ -1,5 +1,10 @@
 CloudPT XBMC Changelog
 
+0.1.5 August 13, 2013 - Minor fixes and some progress bars for the lazy rpi
+SSL problem identified to originate from gnu-tls instead of SSL on libcurl. Won't fix.
+Added matrioska to the list of allowed mimes
+Added progress bars
+
 0.1.4 August 7, 2013
 Better handling of failed auths and verifiers
 Show QRCode with verifier URL

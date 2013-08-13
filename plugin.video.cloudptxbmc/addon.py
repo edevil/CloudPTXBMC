@@ -61,7 +61,7 @@ API_USERINFO_URL = CLOUDPT_API_URL + '/1/Account/Info'
 
 IMAGE_MIMES = set(['image/jpeg', 'image/png', 'image/tiff', 'image/x-ms-bmp', 'image/gif'])
 AUDIO_MIMES = set(['audio/mpeg', 'audio/mp4', 'audio/x-flac', 'audio/mp4'])
-VIDEO_MIMES = set(['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv'])
+VIDEO_MIMES = set(['video/quicktime', 'video/mp4', 'video/mpeg', 'video/x-msvideo', 'video/x-ms-wmv', 'video/x-matroska'])
 
 ADDONID = 'plugin.video.cloudptxbmc'
 settings = xbmcaddon.Addon(id=ADDONID)
@@ -124,6 +124,9 @@ def index():
 @plugin.route('/browse_image<path>')
 def browse_image(path):
 
+    pDialog = xbmcgui.DialogProgress()
+    ret = pDialog.create(language(30000), language(30018))
+
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
@@ -139,8 +142,16 @@ def browse_image(path):
 
         photosize = settings.getSetting('settings.photos.size')
 
+        totalItems = len(api_res['contents'])
+        itemCount = 0
+
         items = []
+        
         for entry in api_res['contents']:
+            itemCount = itemCount + 1
+            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
+            #xbmc.sleep(1000)
+
             if entry['is_dir']:
                 items.append({
                     'label': os.path.basename(entry['path']),
@@ -174,8 +185,12 @@ def browse_image(path):
 
                 items.append(item)
 
+        pDialog.close()
+
         return plugin.finish(items)
     else:
+        pDialog.close()
+
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
         plugin.notify(msg=language(30011), title=language(30012), delay=5000)
@@ -184,6 +199,10 @@ def browse_image(path):
 
 @plugin.route('/browse_audio<path>')
 def browse_audio(path):
+
+    pDialog = xbmcgui.DialogProgress()
+    ret = pDialog.create(language(30000), language(30018))
+
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
@@ -197,8 +216,16 @@ def browse_audio(path):
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+        totalItems = len(api_res['contents'])
+        itemCount = 0
+
         items = []
         for entry in api_res['contents']:
+
+            itemCount = itemCount + 1
+            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
+            #xbmc.sleep(1000)
+
             if entry['is_dir']:
                 items.append({
                     'label': os.path.basename(entry['path']),
@@ -220,8 +247,13 @@ def browse_audio(path):
 
                 items.append(item)
 
+        pDialog.close()
+
         return items
     else:
+
+        pDialog.close()
+
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
         plugin.notify(msg=language(30011), title=language(30012), delay=5000)
@@ -230,6 +262,10 @@ def browse_audio(path):
 
 @plugin.route('/browse_video<path>')
 def browse_video(path):
+
+    pDialog = xbmcgui.DialogProgress()
+    ret = pDialog.create(language(30000), language(30018))
+
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
     signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
                                     client_secret=OAUTH_CONSUMER_SECRET,
@@ -242,12 +278,16 @@ def browse_video(path):
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
+
+        totalItems = len(api_res['contents'])
+        itemCount = 0
+
         items = []
-        items.append({
-            'label': 'SSL Video from sandbox',
-            'path' : 'https://sandbox.eep.pt/xbmc/video.mov',
-            'is_playable' : True
-            })
+        #items.append({
+        #    'label': 'SSL Video from sandbox',
+        #    'path' : 'https://sandbox.eep.pt/xbmc/video.mov',
+        #    'is_playable' : True
+        #    })
         #items.append({
         #    'label': 'NOSSL Video from sandbox',
         #    'path' : 'http://sandbox.eep.pt/xbmc/video.mov',
@@ -265,6 +305,11 @@ def browse_video(path):
         #    })
 
         for entry in api_res['contents']:
+
+            itemCount = itemCount + 1
+            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
+            #xbmc.sleep(1000)
+
             if entry['is_dir']:
                 items.append({
                     'label': os.path.basename(entry['path']),
@@ -291,8 +336,10 @@ def browse_video(path):
 
                 items.append(item)
 
+        pDialog.close()
         return items
     else:
+        pDialog.close()
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
         plugin.notify(msg=language(30011), title=language(30012), delay=5000)
