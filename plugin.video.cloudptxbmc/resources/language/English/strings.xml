@@ -20,8 +20,8 @@
   <string id="30016">Logout</string> 
   <string id="30017">User %s has logged off.</string> 
   <string id="30018">Reading from CloudPT</string> 
-  <string id="30019"></string> 
-  <string id="30020"></string> 
+  <string id="30019">Retrieving thumb {0} of {1}</string> 
+  <string id="30020">Lazy load thumbnails</string> 
 
   <string id="30100">Debug Log</string>
 </strings>

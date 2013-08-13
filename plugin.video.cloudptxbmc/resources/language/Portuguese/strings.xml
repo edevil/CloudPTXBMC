@@ -20,8 +20,8 @@
   <string id="30016">Logout</string> 
   <string id="30017">O utilizador %s fez logout.</string> 
   <string id="30018">A obter ficheiros...</string> 
-  <string id="30019"></string> 
-  <string id="30020"></string> 
+  <string id="30019">A obter thumbnail {0} de {1}</string> 
+  <string id="30020">Obter thumbnails em background</string> 
 
   <string id="30100">Debug Log</string>
 </strings>

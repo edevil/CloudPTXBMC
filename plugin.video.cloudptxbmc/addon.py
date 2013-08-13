@@ -13,6 +13,68 @@ import oauthlib
 import urllib
 import CommonFunctions as common
 
+
+def get_crc32( string ):
+    """Helper function to calculate thumbnail hash"""
+
+    string = string.lower()
+    bytes = bytearray(string.encode())
+    crc = 0xffffffff;
+    for b in bytes:
+        crc = crc ^ (b << 24)
+        for i in range(8):
+            if (crc & 0x80000000 ):
+                crc = (crc << 1) ^ 0x04C11DB7
+            else:
+                crc = crc << 1;
+        crc = crc & 0xFFFFFFFF
+
+    return '%08x' % crc
+
+
+def process_missing_thumbs(missing_thumbs):
+    """Fetch missing thumbnails to local files"""
+
+    auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
+    plugin.log.info('Will need to fetch {0} thumbnails'.format(len(missing_thumbs)))
+
+    pDialogms = xbmcgui.DialogProgress()
+    ret = pDialogms.create(language(30000))
+
+    itemCountms = 0
+    for local_thumb, entry_path in missing_thumbs:
+        itemCountms = itemCountms + 1
+        pDialogms.update( int(float(itemCountms)/float(len(missing_thumbs))*100), 
+                            language(30019).format(itemCountms, len(missing_thumbs)),
+                            os.path.basename(entry_path).encode('utf-8'),
+                           )
+
+        resp_thumb = rsession.get(API_THUMB_URL + urllib.quote(entry_path.encode('utf-8')) + '?size=m&format=jpeg', auth=auth)
+        if resp_thumb.status_code == 200:
+            with open(local_thumb, 'w') as tfile:
+                tfile.write(resp_thumb.content)
+        else:
+            plugin.log.error('Could not fetch thumbnail: {0} {1}'.format(entry_path.encode('utf-8'), resp_thumb))
+    pDialogms.close()
+
+
+def check_thumb(entry, item, missing_thumbs):
+    """Check if thumbnail already exists"""
+
+    local_thumb_path = os.path.join(xbmc.translatePath('special://temp/'), entry['rev'] + '.jpeg')
+    item['thumbnail'] = local_thumb_path
+
+    thumb_hash = get_crc32(local_thumb_path)
+    local_thumb_cache = os.path.join(xbmc.translatePath('special://thumbnails/'), thumb_hash[0], thumb_hash + '.jpg')
+    if os.path.exists(local_thumb_cache):
+        plugin.log.info('Local thumb of {0} already exists: {1}'.format(entry['path'].encode('utf-8'), local_thumb_cache))
+    elif os.path.exists(local_thumb_path):
+        plugin.log.info('Local thumb of {0} already fetched, but not in cache: {1} - {2}'.format(entry['path'].encode('utf-8'), local_thumb_path, local_thumb_cache))
+    else:
+        plugin.log.info('Will need to fetch the thumbnail of {0} into {1} - {2} not found'.format(entry['path'].encode('utf-8'), local_thumb_path, local_thumb_cache))
+        missing_thumbs.append((local_thumb_path, entry['path']))
+
+
 # Show qrcode window definitions
 # Should be closed after anykey
 class QRCodePopupWindow(xbmcgui.WindowDialog):
@@ -36,6 +98,7 @@ class QRCodePopupWindow(xbmcgui.WindowDialog):
         ACTION_PREVIOUS_MENU = 10
         #if action == ACTION_PREVIOUS_MENU:
         self.close()
+
 
 plugin = Plugin()
 storage = plugin.get_storage('storage')
@@ -73,6 +136,7 @@ rsession = requests.Session()
 language = settings.getLocalizedString
 dbg = settings.getSetting("settings.debug") == "true"
 temporary_path = xbmc.translatePath(settings.getAddonInfo('profile'))
+
 
 @plugin.route('/')
 def index():
@@ -113,7 +177,7 @@ def index():
             'path': plugin.url_for('login'),
         }
         items.append(item)
-        
+
         # Force login if we don't have auth info
         url = plugin.url_for('login')
         plugin.redirect(url)
@@ -122,10 +186,8 @@ def index():
 
 
 @plugin.route('/browse_image<path>')
+#@plugin.cached(TTL=120)
 def browse_image(path):
-
-    pDialog = xbmcgui.DialogProgress()
-    ret = pDialog.create(language(30000), language(30018))
 
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
@@ -135,6 +197,7 @@ def browse_image(path):
                                     resource_owner_secret=storage['oauth_token_secret'],
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
+    hasPictures = False
 
     if resp_list.status_code == 200:
         api_res = resp_list.json()
@@ -142,15 +205,10 @@ def browse_image(path):
 
         photosize = settings.getSetting('settings.photos.size')
 
-        totalItems = len(api_res['contents'])
-        itemCount = 0
-
+        missing_thumbs = []
         items = []
         
         for entry in api_res['contents']:
-            itemCount = itemCount + 1
-            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
-            #xbmc.sleep(1000)
 
             if entry['is_dir']:
                 items.append({
@@ -160,12 +218,9 @@ def browse_image(path):
             elif entry['mime_type'] in IMAGE_MIMES:
                 item = {
                     'label': os.path.basename(entry['path']),
-                    #'path': plugin.url_for(
-                    #    endpoint='play_media',
-                    #    path=entry['path'].encode('utf-8'),
-                    #),
                     'is_playable': True,
                 }
+                hasPictures = True
 
                 # the slideshow stuff does not seem to support receiving plugin:// URLs...
                 # this is a problem because these URLs will only work for 300s
@@ -176,20 +231,26 @@ def browse_image(path):
                 else:
                     file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
 
-                # file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
                 item['path'] = file_url
+                item['properties'] = {'mimetype': entry['mime_type']}
 
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
 
-        pDialog.close()
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
 
-        return plugin.finish(items)
+
+        # If we have pictures, force thumbnail mode
+        if hasPictures:
+            xbmc.executebuiltin('Container.SetViewMode(500)')
+
+        return items
+
+
     else:
-        pDialog.close()
 
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
@@ -200,31 +261,18 @@ def browse_image(path):
 @plugin.route('/browse_audio<path>')
 def browse_audio(path):
 
-    pDialog = xbmcgui.DialogProgress()
-    ret = pDialog.create(language(30000), language(30018))
-
     # fetch files from root dir
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
-                                    client_secret=OAUTH_CONSUMER_SECRET,
-                                    resource_owner_key=storage['oauth_token_key'],
-                                    resource_owner_secret=storage['oauth_token_secret'],
-                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
     if resp_list.status_code == 200:
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
-        totalItems = len(api_res['contents'])
-        itemCount = 0
-
+        missing_thumbs = []
         items = []
-        for entry in api_res['contents']:
 
-            itemCount = itemCount + 1
-            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
-            #xbmc.sleep(1000)
+        for entry in api_res['contents']:
 
             if entry['is_dir']:
                 items.append({
@@ -237,22 +285,21 @@ def browse_audio(path):
                     'path': plugin.url_for(
                         endpoint='play_media',
                         path=entry['path'].encode('utf-8'),
+                        mime_type=entry['mime_type'],
                     ),
                     'is_playable': True,
                 }
 
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
 
-        pDialog.close()
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
 
         return items
     else:
-
-        pDialog.close()
 
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
@@ -263,52 +310,17 @@ def browse_audio(path):
 @plugin.route('/browse_video<path>')
 def browse_video(path):
 
-    pDialog = xbmcgui.DialogProgress()
-    ret = pDialog.create(language(30000), language(30018))
-
     auth = OAuth1(OAUTH_CONSUMER_KEY, OAUTH_CONSUMER_SECRET, storage['oauth_token_key'], storage['oauth_token_secret'])
-    signer = oauthlib.oauth1.Client(client_key=OAUTH_CONSUMER_KEY,
-                                    client_secret=OAUTH_CONSUMER_SECRET,
-                                    resource_owner_key=storage['oauth_token_key'],
-                                    resource_owner_secret=storage['oauth_token_secret'],
-                                    signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_list = rsession.get(API_METADATA_URL + path, auth=auth)
 
     if resp_list.status_code == 200:
         api_res = resp_list.json()
         plugin.log.info(api_res)
 
-
-        totalItems = len(api_res['contents'])
-        itemCount = 0
-
+        missing_thumbs = []
         items = []
-        #items.append({
-        #    'label': 'SSL Video from sandbox',
-        #    'path' : 'https://sandbox.eep.pt/xbmc/video.mov',
-        #    'is_playable' : True
-        #    })
-        #items.append({
-        #    'label': 'NOSSL Video from sandbox',
-        #    'path' : 'http://sandbox.eep.pt/xbmc/video.mov',
-        #    'is_playable' : True
-        #    })
-        #items.append({
-        #    'label': 'SSL MP4 from sandbox',
-        #    'path' : 'https://sandbox.eep.pt/xbmc/video.mp4',
-        #    'is_playable' : True
-        #    })
-        #items.append({
-        #    'label': 'NOSSL MP4 from sandbox',
-        #    'path' : 'http://sandbox.eep.pt/xbmc/video.mp4',
-        #    'is_playable' : True
-        #    })
 
         for entry in api_res['contents']:
-
-            itemCount = itemCount + 1
-            pDialog.update( float(itemCount)/float(totalItems)*100, os.path.basename(entry['path']).encode('utf-8') )
-            #xbmc.sleep(1000)
 
             if entry['is_dir']:
                 items.append({
@@ -321,25 +333,21 @@ def browse_video(path):
                     'path': plugin.url_for(
                         endpoint='play_media',
                         path=entry['path'].encode('utf-8'),
+                        mime_type=entry['mime_type'],
                     ),
                     'is_playable': True,
                 }
 
-                # the slideshow stuff does not seem to support receiving plugin:// URLs...
-                # this is a problem because these URLs will only work for 300s
-                file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(entry['path'].encode('utf-8')))
-                item['path'] = file_url
-
                 if entry['thumb_exists']:
-                    thumb_url, _, _ = signer.sign(API_THUMB_URL + urllib.quote(entry['path'].encode('utf-8')) + '?size=m&format=png')
-                    item['thumbnail'] = thumb_url
+                    check_thumb(entry, item, missing_thumbs)
 
                 items.append(item)
 
-        pDialog.close()
+        if missing_thumbs:
+            process_missing_thumbs(missing_thumbs)
+
         return items
     else:
-        pDialog.close()
         plugin.log.error(resp_list)
         plugin.log.error(resp_list.content)
         plugin.notify(msg=language(30011), title=language(30012), delay=5000)
@@ -355,13 +363,21 @@ def play_media(path):
                                     resource_owner_secret=storage['oauth_token_secret'],
                                     signature_type=oauthlib.oauth1.SIGNATURE_TYPE_QUERY)
     resp_media = rsession.post(API_MEDIA_URL + path, auth=auth)
+    item = {}
+    mime_type = plugin.request.args.get('mime_type')
+    if mime_type:
+        plugin.log.info('Got mime type')
+        item['properties'] = {'mimetype': mime_type[0]}
+
     if resp_media.status_code == 200:
         api_res = resp_media.json()
-        return plugin.set_resolved_url(api_res['url'])
+        item['path'] = api_res['url']
+        return plugin.set_resolved_url(item=item)
     elif resp_media.status_code == 403:
         # could not create link. Let's try a direct API link
         file_url, _, _ = signer.sign(API_FILES_URL + urllib.quote(path))
-        return plugin.set_resolved_url(file_url)
+        item['path'] = file_url
+        return plugin.set_resolved_url(item=item)
     else:
         plugin.log.error(resp_media)
         plugin.log.error(resp_media.content)
@@ -461,7 +477,7 @@ def login():
                 plugin.log.error(resp_userinfo)
                 plugin.log.error(resp_userinfo.content)
                 plugin.notify(msg=language(30015), title=language(30012), delay=5000)
-        
+
             url = plugin.url_for('index')
             plugin.redirect(url)
         except:
