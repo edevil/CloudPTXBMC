@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 from xbmcswift2 import xbmc, xbmcgui, xbmcaddon, Plugin
 
 __addon_id__ = 'plugin.video.cloudptxbmc'
@@ -12,7 +12,7 @@ settings = xbmcaddon.Addon(id='plugin.video.cloudptxbmc')
 language = settings.getLocalizedString
 
 # Get current username
-currentUser = settings.getSetting( "settings.user.name" )
+currentUser = settings.getSetting( "settings.user.name" ).decode('utf-8')
 
 # Clear oauth info from storage and remove username from settings
 

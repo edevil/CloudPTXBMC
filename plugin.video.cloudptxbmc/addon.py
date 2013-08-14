@@ -88,16 +88,25 @@ class QRCodePopupWindow(xbmcgui.WindowDialog):
         # Relative resolutions to 1920x1080 (1080p)
         self.setCoordinateResolution(0)
 
-        self.addControl(xbmcgui.ControlImage(x=610, y=190, width=700, height=700, filename=os.path.join(MEDIADIR, "background_qrcode.png")))
+        self.addControl(xbmcgui.ControlImage(x=0, y=0, width=1920, height=1080, filename=os.path.join(MEDIADIR, "background_qrcode.png")))
+        #self.addControl(xbmcgui.ControlImage(x=610, y=190, width=700, height=800, filename=os.path.join(MEDIADIR, "background_qrcode.png")))
         self.addControl(xbmcgui.ControlImage(x=710, y=240, width=500, height=500, filename=qrcodefile))
         self.addControl(xbmcgui.ControlLabel(x=610, y=760, width=700, height=25, label=linha1, alignment=XBFONT_CENTER_X))
         self.addControl(xbmcgui.ControlLabel(x=610, y=800, width=700, height=25, label=linha2, alignment=XBFONT_CENTER_X))
         self.addControl(xbmcgui.ControlLabel(x=610, y=840, width=700, height=25, label=linha3, alignment=XBFONT_CENTER_X))
+        self.button0 = xbmcgui.ControlButton(x=710, y=890, width=500, height=50, label='OK', alignment=XBFONT_CENTER_X | XBFONT_CENTER_Y)
+        self.addControl(self.button0)
+        self.setFocus(self.button0)
 
     def onAction(self, action):
         ACTION_PREVIOUS_MENU = 10
-        #if action == ACTION_PREVIOUS_MENU:
-        self.close()
+        ACTION_SELECT_ITEM = 7
+        if action == ACTION_PREVIOUS_MENU or action == ACTION_SELECT_ITEM:
+            self.close()
+
+    def onControl(self, control):
+        if control == self.button0:
+            self.close()
 
 
 plugin = Plugin()
@@ -242,12 +251,15 @@ def browse_image(path):
         if missing_thumbs:
             process_missing_thumbs(missing_thumbs)
 
+        return items
 
         # If we have pictures, force thumbnail mode
-        if hasPictures:
-            xbmc.executebuiltin('Container.SetViewMode(500)')
-
-        return items
+        #if hasPictures:
+        #    xbmc.executebuiltin('Container.SetViewMode(500)')
+        #    return plugin.finish(items, succeeded=True)
+        #    #xbmc.executebuiltin('Container.Refresh')
+        #else:
+        #    return items
 
 
     else:

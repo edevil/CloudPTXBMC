@@ -1,7 +1,3 @@
 TODO
 Change language settings to use .po format
 Design: full XBMC Skin + icon.jpg and fanart.jpg
-
-ISSUES
-Fix problem with certain videos not playing through SSL (found those that require range requests)
-Find a solution to the 300s problem on photos (slideshow)

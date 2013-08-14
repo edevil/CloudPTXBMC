@@ -1,29 +1,44 @@
 CloudPT XBMC Changelog
 
+---------------------------------------------------------------------------------------
+0.1.6 August 14, 2014 - Minor fixes on the QRCode window
+
+Nonces were updated to 1h with SSL so issue with photos is solved
+
+---------------------------------------------------------------------------------------
 0.1.5 August 13, 2013 - LocalThumbs and some more fixes
+
 LocalThumbs branch merged into master
 SSL problem identified to originate from gnu-tls instead of SSL on libcurl. Won't fix.
 Added matrioska to the list of allowed mimes
 Added progress bars for thumb generation
 Preparing option for lazy loading of thumbnails
 
+---------------------------------------------------------------------------------------
 0.1.4 August 7, 2013
+
 Better handling of failed auths and verifiers
 Show QRCode with verifier URL
 
+---------------------------------------------------------------------------------------
 0.1.3 August 3, 2013
+
 Changed video_browse behaviour to match pictures and audio
 Remove full path from labels
 
+---------------------------------------------------------------------------------------
 0.1.2 August 2, 2013
+
 Further work on translations. Completed
 Changed way of entering pin
 
+---------------------------------------------------------------------------------------
 0.1.1 August 1, 2013
+
 Added settings.xml
 Initial translations work
 Added icon.png
 
-0.1 July 24, 2013
-Initial version
+---------------------------------------------------------------------------------------
+0.1 July 24, 2013 - Initial version
 
