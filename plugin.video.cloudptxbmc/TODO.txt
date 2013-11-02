@@ -1,3 +1,0 @@
-TODO
-Change language settings to use .po format
-Design: full XBMC Skin + icon.jpg and fanart.jpg
