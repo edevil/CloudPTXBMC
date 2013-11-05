@@ -13,10 +13,10 @@
   <string id="30008">Por favor visite este URL</string> 
   <string id="30009">para autorizar o XBMC</string> 
   <string id="30010">Insira o código de verificação</string> 
-  <string id="30011">Impossível aceder ao diretório</string> 
+  <string id="30011">Impossivel aceder ao diretorio</string> 
   <string id="30012">Erro</string> 
-  <string id="30014">Não foi possível tocar este ficheiro</string> 
-  <string id="30015">Não foi possível obter informação do utilizador</string> 
+  <string id="30014">Nao foi possivel tocar este ficheiro</string> 
+  <string id="30015">Nao foi possivel obter informacao do utilizador</string> 
   <string id="30016">Logout</string> 
   <string id="30017">O utilizador %s fez logout.</string> 
   <string id="30018">A obter ficheiros...</string> 

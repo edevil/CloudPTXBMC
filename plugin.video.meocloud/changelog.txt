@@ -1,13 +1,18 @@
 MEOCloud for XBMC Changelog
 
 ---------------------------------------------------------------------------------------
-0.1.8 November 1, 2014 - Changed from CloudPT to MEOCloud
+0.1.9 November 5, 2013 - Cleanup
+
+Comply with debug flag and some basic clean up
+
+---------------------------------------------------------------------------------------
+0.1.8 November 1, 2013 - Changed from CloudPT to MEOCloud
 
 Changed API endpoints, logo and fanart.
 Also changed the whole plugin name.
 
 ---------------------------------------------------------------------------------------
-0.1.6 August 14, 2014 - Minor fixes on the QRCode window
+0.1.6 August 14, 2013 - Minor fixes on the QRCode window
 
 Nonces were updated to 1h with SSL so issue with photos is solved
 
